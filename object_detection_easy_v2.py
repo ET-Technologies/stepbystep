@@ -55,7 +55,7 @@ class Inference:
         infer_request_handle = self.async_inference(image)
         res = self.get_output(infer_request_handle, 0, output=None)
         # Draw Bounding Box
-        image = self.boundingbox(res, initial_w, initial_h, image)
+        image = self.boundingbox(res, initial_w, initial_h, input_img)
 
         return frame
 
