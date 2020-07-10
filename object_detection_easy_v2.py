@@ -32,7 +32,7 @@ class Inference:
         print ("input_shape:" +str(self.input_shape))
         print ("output_name: " +str(self.output_name))
         print ("output_shape: " +str(self.output_shape))
-    
+
     # Loads the model
     def load_model(self):
         # Adds Extension
@@ -42,6 +42,25 @@ class Inference:
         # Load the network into an executable network
         self.exec_network = self.core.load_network(network=self.model, device_name=self.device, num_requests=1)
         print ("Model is loaded")
+        
+    # Start inference and prediction    
+    def predict(self, image, initial_w, initial_h):
+        
+        # save original image
+        input_img = image
+        # Pre-process the image
+        image = preprocess_input(image)
+   
+    def preprocess_input(self, image):
+        # Get the input shape
+        n, c, h, w = (self.core, self.input_shape)[1]
+        print ("n-c-h-w " + str(n) + "-" + str(c) + "-" +str(h) + "-" +str(w))
+        image = cv2.resize(frame, (w, h))
+        image = image.transpose((2, 0, 1))
+        image = image.reshape((n, c, h, w))
+        
+    return image
+        
         
     # Start asyncron inference request and wait for the result
     def async_inference(self, image):
