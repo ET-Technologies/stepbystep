@@ -8,6 +8,7 @@ import argparse
 import sys
 from openvino.inference_engine import IENetwork, IECore
 
+# Collect all the necessary input values
 def build_argparser():
     parser=argparse.ArgumentParser()
     parser.add_argument('--model', required=True)
@@ -20,7 +21,7 @@ def build_argparser():
 
     return parser
 
-# Start asyncron inference request
+# Start asyncron inference request and wait for the result
 def async_inference(exec_network, input_name, image):
     infer_request_handle = exec_network.start_async(request_id=0, inputs={input_name: image})
     
@@ -30,10 +31,11 @@ def async_inference(exec_network, input_name, image):
             break
         else:
             time.sleep(1)
-            
+        print ("status: " +str(status))
+        
         return infer_request_handle
 
-# Wait for the result
+# Wait for the result (is implemented in "Start asyncron inference request")
 def wait(exec_network, request_id=0):
     wait_process = exec_network.requests[request_id].wait(1)
     
@@ -59,7 +61,7 @@ def boundingbox(res, initial_w, initial_h, frame, threshold):
             ymax = int(obj[6] * initial_h)
             cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 55, 255), 1)
             current_count = current_count + 1
-            print (current_count)
+            print ("Current count: " + str(current_count))
     return frame            
 
 def main():
@@ -79,19 +81,22 @@ def main():
         # Extension
     CPU_EXTENSION = "/opt/intel/openvino/deployment_tools/inference_engine/lib/intel64/libcpu_extension_sse4.so"
     
-    core = IECore()
     # Read the model
-    #model = core.read_network(model=model_structure, weights=model_weights)
-    model = IENetwork(model=model_structure, weights=model_weights) #old version
+    core = IECore()
+    #model = core.read_network(model=model_structure, weights=model_weights) # new openvino version
+    model = IENetwork(model=model_structure, weights=model_weights) #old openvino version
+        # Add CPU extension
     core.add_extension(CPU_EXTENSION, device)
+    
     # Load the network into an executable network
     exec_network = core.load_network(network=model, device_name=device, num_requests=1)
     print ("Model is loaded")
+    
+    # Time to load the model
     total_model_load_time = time.time() - start_model_load_time
     print ("Time to load model: " + str(total_model_load_time))
     
-        # Get the input layer
-    
+    # Get the input layer
     input_name = next(iter(model.inputs))
     input_shape = model.inputs[input_name].shape
     output_name = next(iter(model.outputs))
@@ -101,11 +106,14 @@ def main():
     print ("input_shape:" +str(input_shape))
     print ("output_name: " +str(output_name))
     print ("output_shape: " +str(output_shape))
+    
+    # Get the input shape
     n, c, h, w = (core, input_shape)[1]
     
-    # Get video stream
+    # Get the input video stream
     cap=cv2.VideoCapture(video_file)
-    # Information about the video stream
+    
+    # Information about the input video stream
     initial_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     initial_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     video_len = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -116,10 +124,11 @@ def main():
     print ("video_len: " +str(video_len))
     print ("fps: " +str(fps))
     
+    # Define output video
     out_video = cv2.VideoWriter(os.path.join(output_path, 'output_video3.mp4'), cv2.VideoWriter_fourcc(*'avc1'), fps, (initial_w, initial_h), True)
     request_id=0
     
-        ### Read from the video capture ###
+    ### Read from the video capture ###
     while cap.isOpened():
         ret, frame=cap.read()
         if not ret:
@@ -133,26 +142,24 @@ def main():
         print ("n-c-h-w " + str(n) + "-" + str(c) + "-" +str(h) + "-" +str(w))
         
         # Start asynchronous inference for specified request
+        start_inference_time = time.time()
         infer_request_handle = async_inference(exec_network, input_name, image)
-        inf_start_time = time.time()
         
-        # Wait for the result
-        #infer_status = infer_request_handle.wait(-1)
-        #infer_status = wait(exec_network, request_id=0)
-        #print ("infer_status: " +str(infer_status))
-        det_time = time.time() - inf_start_time
-        
-        # Get output
+        # Get the output data
         res = get_output(exec_network, infer_request_handle, output_name, request_id=0, output=None)
-        #res = infer_request_handle.outputs[output_name]
+        detection_time = time.time() - start_inference_time
+        print ("Detection time: " + str(detection_time))
         
         # Draw Bounding Box
         frame = boundingbox(res, initial_w, initial_h, frame, threshold)
         
         # Write the output video
         out_video.write(frame)
+        
+    cap.release()
+    cv2.destroyAllWindows()
     
 
-
+# Start sequence
 if __name__=='__main__':
     main()
