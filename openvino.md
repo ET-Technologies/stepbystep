@@ -2,6 +2,9 @@
 
 cd /opt/intel/openvino/deployment_tools/open_model_zoo/tools/downloader
 
+source /opt/intel/openvino/bin/setupvars.sh
+
+
 ## Udacity Workspace
 sudo ./downloader.py --name human-pose-estimation-0001 -o /home/workspace 
 ## Mac
