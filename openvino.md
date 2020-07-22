@@ -1,4 +1,6 @@
-#Downloader
+# Downloade a model from Openvino Model Zoo
+https://download.01.org/
+
 
 cd /opt/intel/openvino/deployment_tools/open_model_zoo/tools/downloader
 
@@ -24,3 +26,14 @@ resnet18-xnor-binary-onnx-0001
 face-detection-retail-0004
 face-detection-0105
 product-detection-0001
+
+# Model Optimizer
+
+## Caffee
+python3 mo.py --input_model <INPUT_MODEL>.caffemodel
+
+### Options
+--input_model
+--model_name
+--output_dir
+
