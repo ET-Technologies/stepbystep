@@ -1,4 +1,12 @@
-# python object_detection_v2.py --model person-detection-retail-0013 --video Manufacturing.mp4
+# python vehicle_attributes_easy_v1.py --model models/vehicle-attributes-recognition-barrier-0039 --video truck.jpg --output_path outputs
+#truck.jpg
+#images/blue-car.jpg
+#models/vehicle-attributes-recognition-barrier-0039.xml
+# python vehicle_attributes_easy_v1.py --model intel/landmarks-regression-retail-0009/FP16/landmarks-regression-retail-0009 --video demo.mp4 --output_path outputs
+# python vehicle_attributes_easy_v1.py --model models/semantic-segmentation-adas-0001 --video demo.mp4 --output_path outputs
+#semantic-segmentation-adas-0001
+# python vehicle_attributes_easy_v1.py --model models/human-pose-estimation-0001 --video demo.mp4 --output_path outputs
+#python vehicle_attributes_easy_v1.py --model intel/head-pose-estimation-adas-0001/FP16/head-pose-estimation-adas-0001 --video images/car.png --output_path outputs
 
 import numpy as np
 import time
@@ -26,14 +34,42 @@ class Inference:
 
         # Get the input layer
         self.input_name = next(iter(self.model.inputs))
+        self.input_name_all = [i for i in self.model.inputs.keys()] # gets all input_names
+        self.input_name_all_02 = self.model.inputs.keys() # gets all output_names
+        self.input_name_first_entry = self.input_name_all[0]
+        
         self.input_shape = self.model.inputs[self.input_name].shape
+        
         self.output_name = next(iter(self.model.outputs))
+        self.output_name_type = self.model.outputs[self.output_name]
+        self.output_names = [i for i in self.model.outputs.keys()] # gets all output_names
+        self.output_names_total_entries = len(self.output_names)
+        
         self.output_shape = self.model.outputs[self.output_name].shape
-
-        print("input_name:" + str(self.input_name))
-        print("input_shape:" + str(self.input_shape))
+        self.output_shape_second_entry = self.model.outputs[self.output_name].shape[1]
+        self.output_name_first_entry = self.output_names[0]
+        
+        print("--------")
+        print("input_name: " + str(self.input_name))
+        print("input_name_all: " + str(self.input_name_all))
+        print("input_name_all_total: " + str(self.input_name_all_02))
+        print("input_name_first_entry: " + str(self.input_name_first_entry))
+        print("--------")
+        
+        print("input_shape: " + str(self.input_shape))
+        print("--------")
+        
         print("output_name: " + str(self.output_name))
+        print("output_name type: " + str(self.output_name_type))
+        print("output_names: " +str(self.output_names))
+        print("output_names_total_entries: " +str(self.output_names_total_entries))
+        print("output_name_first_entry: " + str(self.output_name_first_entry))
+        print("--------")
+        
         print("output_shape: " + str(self.output_shape))
+        print("output_shape_second_entry: " + str(self.output_shape_second_entry))
+        print("--------")
+        
 
     # Loads the model
     def load_model(self):
@@ -46,18 +82,21 @@ class Inference:
         print("Model is loaded")
 
     # Start inference and prediction
-    def predict(self, image, initial_w, initial_h):
+    def predict(self, image):
 
         # save original image
         input_img = image
         # Pre-process the image
         image = self.preprocess_input(image)
-        infer_request_handle = self.async_inference(image)
-        res = self.get_output(infer_request_handle, 0, output=None)
-        # Draw Bounding Box
-        image = self.boundingbox(res, initial_w, initial_h, input_img)
+        result = self.exec_network.infer({self.input_name:image}) #syncro inference
+        print ("Start syncro inference")
+        #infer_request_handle = self.async_inference(image)
+        #res = self.get_output(infer_request_handle, 0, output=None)
+        
+        # Vehicle output
+        color, car_type = self.vehicle_attributes(result)
 
-        return frame
+        return frame, color, car_type
 
     # Preprocess the image
     def preprocess_input(self, frame):
@@ -67,20 +106,10 @@ class Inference:
         image = cv2.resize(frame, (w, h))
         image = image.transpose((2, 0, 1))
         image = image.reshape((n, c, h, w))
-
+        print ("End of preprocess input")
+        
         return image
 
-        # Start asyncron inference request and wait for the result
-    def async_inference(self, image):
-        infer_request_handle = self.exec_network.start_async(request_id=0, inputs={self.input_name: image})
-        while True:
-            status = self.exec_network.requests[0].wait(-1)
-            if status == 0:
-                break
-            else:
-                time.sleep(1)
-            print("status: ") + str(status)
-        return infer_request_handle
     # Get the inference output
     def get_output(self, infer_request_handle, request_id, output):
         if output:
@@ -89,29 +118,41 @@ class Inference:
             res = self.exec_network.requests[request_id].outputs[self.output_name]
         return res
 
-    def vehicle_attributes(self,res):
+    def vehicle_attributes(self,result):
         #Gets the output of the vehicle model
-
-        color = res['color']
+        
+        CAR_COLORS = ["white", "gray", "yellow", "red", "green", "blue", "black"]
+        
+        color = result['color']
+        color_flatten = result['color'].flatten()
+        color_total = len(color_flatten)
+        color_class = np.argmax(color)
+        color_class_text = CAR_COLORS[color_class]
+        print("--------")
         print("color: " + str(color))
-    # Draw Bounding Box
-    def boundingbox(self, res, initial_w, initial_h, frame):
-        current_count = 0
-        for obj in res[0][0]:
-            # Draw bounding box for object when it's probability is more than the specified threshold
-            if obj[2] > self.threshold:
-                xmin = int(obj[3] * initial_w)
-                ymin = int(obj[4] * initial_h)
-                xmax = int(obj[5] * initial_w)
-                ymax = int(obj[6] * initial_h)
-                cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 55, 255), 1)
-                current_count = current_count + 1
-                print("Current count: " + str(current_count))
-        return frame
+        print("color_flatten: " + str(color_flatten))
+        print("total number of colors: " + str(color_total))
+        print("color number with the higest propability (argmax): " + str(color_class))
+        print("color text with the higest propability (argmax): " + str(color_class_text))
+        print("--------")
 
-    # Collect all the necessary input values
+        CAR_TYPES = ["car", "bus", "truck", "van"]
+        
+        car_type =result['type']
+        car_type_flatten = result['type'].flatten()
+        car_type_total = len(car_type_flatten)
+        car_type_class = np.argmax(car_type)
+        car_type_class_text = CAR_TYPES[car_type_class]
+        print("car_type: " + str(car_type))
+        print("car_type_flatten: " + str(car_type_flatten))
+        print("total number of car types: " + str(car_type_total))
+        print("car type with the higest propability (argmax): " + str(car_type_class))
+        print("car text with the higest propability (argmax): " + str(car_type_class_text))
+        print("--------")
 
-
+        return color_class, car_type_class
+    
+# Collect all the necessary input values
 def build_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', required=True)
@@ -129,10 +170,12 @@ def main():
     args = build_argparser().parse_args()
     model_name = args.model
     device = args.device
-    video_file = args.video
+    video = args.video
     max_people = args.max_people
     threshold = args.threshold
     output_path = args.output_path
+    color = None
+    car_type = None
 
     start_model_load_time = time.time()  # Time to load the model (Start)
     # Load class Inference as inference
@@ -141,44 +184,31 @@ def main():
     inference.load_model()
     total_model_load_time = time.time() - start_model_load_time  # Time model needed to load
     print("Time to load model: " + str(total_model_load_time))
-
+    
     # Get the input video stream
-    cap = cv2.VideoCapture(video_file)
-
+    cap = cv2.VideoCapture(video)
     # Capture information about the input video stream
     initial_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     initial_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     video_len = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-    print("initial_w: " + str(initial_w))
-    print("initial_h: " + str(initial_h))
-    print("video_len: " + str(video_len))
-    print("fps: " + str(fps))
-
-    # Define output video
-    out_video = cv2.VideoWriter(os.path.join(output_path, 'output_video3.mp4'), cv2.VideoWriter_fourcc(*'avc1'), fps,
-                                (initial_w, initial_h), True)
-    # We have just one request number is 0
-    request_id = 0
-
-    ### Read from the video capture ###
-    try:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            # Get the image from the inference class
-            image = inference.predict(frame, initial_w, initial_h)
-            # Write the output video
-            out_video.write(image)
-    except Exception as e:
-        print("Could not run Inference: ", e)
-
-        cap.release()
-        cv2.destroyAllWindows()
-
+    
+    print ("initial_w: " +str(initial_w))
+    print ("initial_h: " +str(initial_h))
+    print ("video_len: " +str(video_len))
+    print ("fps: " +str(fps))
+    
+    while cap.isOpened():
+        result, frame = cap.read()
+        image = inference.predict(frame)
+    #image, color, car_type = inference.predict(frame)
+    
+    # Read the input image
+    image = cv2.imread(video_file)
+    # Scale the output text by the image shape
+    scaler = max(int(image.shape[0] / 1000), 1)
+    # Write the text of color and type onto the image
+    image = cv2.putText(image, "Color: {}, Type: {}".format(color, car_type), (50 * scaler, 100 * scaler), cv2.FONT_HERSHEY_SIMPLEX, 2 * scaler, (255, 255, 255), 3 * scaler)
 
 # Start sequence
 if __name__ == '__main__':
