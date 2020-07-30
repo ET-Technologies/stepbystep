@@ -1,8 +1,15 @@
-# python facial_landmark_easy_v1.py --model intel/landmarks-regression-retail-0009/FP16/landmarks-regression-retail-0009 --video demo.mp4 --output_path outputs
+# python text_detection_easy_v1.py --model intel/text-detection-0003/FP32/text-detection-0003 --video images/sign.jpg --output_path outputs
+#intel/text-recognition-0012/FP16/text-recognition-0012.xml
 #images/sitting-on-car.jpg
 #images/car.png
+#text-recognition-0012
 #intel/landmarks-regression-retail-0009/FP16/landmarks-regression-retail-0009.xml
 #demo.mp4
+#images/sign.jpg
+#text-detection-0003
+#python downloader.py --name text-detection-0003 -o /home/workspace
+#intel/text-detection-0003/FP32/text-detection-0003.xml
+
 import numpy as np
 import time
 import os
@@ -78,32 +85,40 @@ class Inference:
 
     # Start inference and prediction
     def predict(self, image, initial_w, initial_h):
+        request_id=0
 
         # save original image
         input_img = image
         # Pre-process the image
         image = self.preprocess_input(image)
-        result = self.exec_network.infer({self.input_name:image}) #syncro inference
+        print("--------")
         print ("Start syncro inference")
-        #infer_request_handle = self.async_inference(image)
-        #res = self.get_output(infer_request_handle, 0, output=None)
+        result = self.exec_network.infer({self.input_name:image}) #syncro inference
+        print("result syncro inference: " + str(result))
+        result_request = self.exec_network.requests[request_id].outputs[self.output_name]
+        print("result_request: " + str(result_request))
+        processed_result = self.handle_text(result_request, image.shape)
         
-        #Head pose estimation
-        result = self.landmark_detection(result)
-        # Vehicle output
-        #color, car_type = self.vehicle_attributes(result)
-
-        return result
+        #processed_result = self.get_output(processed_result, 0, output=None)
+        print("result: get output" + str(result))
+        #text detection
+        image = self.text_detection(input_img, result)
+        
+        return image
 
     # Preprocess the image
     def preprocess_input(self, image):
         # Get the input shape
+        print("--------")
+        print ("Start preprocess input")
         n, c, h, w = (self.core, self.input_shape)[1]
         print("n-c-h-w " + str(n) + "-" + str(c) + "-" + str(h) + "-" + str(w))
         image = cv2.resize(image, (w, h))
         image = image.transpose((2, 0, 1))
         image = image.reshape((n, c, h, w))
+        print("Image is now: " + str(n) +("-")+str(c)+("-")+str(h)+("-")+str(w))
         print ("End of preprocess input")
+        print("--------")
         
         return image
 
@@ -115,24 +130,56 @@ class Inference:
             res = self.exec_network.requests[request_id].outputs[self.output_name]
         return res
     
-    def landmark_detection(self, result):
+    def get_mask(processed_output):
+        '''
+        Given an input image size and processed output for a semantic mask,
+        returns a masks able to be combined with the original image.
+        '''
+    
+        # Create an empty array for other color channels of mask
+        empty = np.zeros(processed_output.shape)
+        # Stack to make a Green mask where text detected
+        mask = np.dstack((empty, processed_output, empty))
+
+        return mask
+    
+    def text_detection(self, input_img, result):
         
-        result_len = len(result)
-        result2 =result[self.output_name]
-        left_eye_coordinates = [result2[0][0], result2[0][1]]
-        print("--------") 
-        print ("result: " +str(result))
-        print ("total number of entries: " +str(result_len))
-        print ("result2: " +str(result2))
-        print ("left_eye_coordinates x0+y0: " +str(left_eye_coordinates))
+        # Get only text detections above 0.5 confidence, set to 255
+        print("--------")
+        print ("Start text detection")
+        output = np.where(result[1]>0.5, 255, 0)
+        print("output: " + str(output))
+        # Get semantic mask
+        text_mask = get_mask(output)
+        # Add the mask to the image
+        image = input_img + text_mask
+        print ("End text detection")
+        return image
+    
+    def handle_text(self, result, input_shape):
+        '''
+        Handles the output of the Text Detection model.
+        Returns ONLY the text/no text classification of each pixel,
+            and not the linkage between pixels and their neighbors.
+        '''
+        # TODO 1: Extract only the first blob output (text/no text classification)
+        print("--------")
+        print ("Start handle text")
+        print("Input: result keys: handle text()" + str(result.keys()))
+        text_classes = result['model/segm_logits/add']
+        print("text_classes: " + str(text_classes))
+    
+        # TODO 2: Resize this output back to the size of the input
+        out_text = np.empty([text_classes.shape[1], input_shape[0], input_shape[1]])
+        for t in range(len(text_classes[0])):
+                out_text[t] = cv2.resize(text_classes[0][t], input_shape[0:2][::-1])
+        print("out_text: handle text()" + str(out_text))
+        print ("End handle_text")
+        print("--------")
+
+        return out_text
         
-        for obj in result2[0][0]:
-            x0 = int(obj[0])
-            y0 = int(obj[0])
-            print ("x0: " +str(x0))
-            print ("y0: " +str(y0))
-        
-        return 
     
 # Collect all the necessary input values
 def build_argparser():
