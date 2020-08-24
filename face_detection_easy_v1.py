@@ -182,15 +182,6 @@ class Model_X:
         print("End: preprocess_output")
         return
 
-
-    '''
-    Before feeding the output of this model to the next model,
-    you might have to preprocess the output. This function is where you can do that.
-    '''
-
-
-
-
     def videofile(self, video):
         if video =='video':
             input_type = 'video'
