@@ -1,12 +1,11 @@
-# source /opt/intel/openvino/bin/setupvars.sh
-# cd /home/thomas/PycharmProjects/Intel/Computer-Pointer-Controller-master/src
-# python3 face_detection.py --model /home/thomas/PycharmProjects/models/face-detection-retail-0004 --video demo.mp4
-# --model /home/thomas/PycharmProjects/models/face-detection-retail-0004
-# --video demo.mp4
-
 # Udacity Workspace
+# source /opt/intel/openvino/bin/setupvars.sh
 # Model Downloader python3 downloader.py --name face-detection-retail-0004 --precisions FP32 -o /home/workspace
 # python3 face_detection.py --model models/face-detection-retail-0004 --video demo.mp4
+
+# Raspberry
+# source /opt/intel/openvino/bin/setupvars.sh
+#python3 face_detection_easy_v1.py --model models/face-detection-adas-0001 --video demos/demo.mp4 --device MYRIAD
 
 import numpy as np
 import time
@@ -23,9 +22,7 @@ class Model_X:
     Class for the Face Detection Model.
     '''
     def __init__(self, model_name, threshold, device='CPU', extensions=None):
-        '''
-        TODO: Use this to set your instance variables.
-        '''
+
         self.model_weights = model_name + '.bin'
         self.model_structure = model_name + '.xml'
         self.device = device
@@ -41,11 +38,6 @@ class Model_X:
 
 
     def load_model(self, device, extension):
-        '''
-        TODO: You will need to complete this method.
-        This method is for loading the model to the device specified by the user.
-        If your model requires any Plugins, this is where you can load them.
-        '''
 
         # Initialise the network and save it in the self.model variables
         try:
@@ -130,11 +122,7 @@ class Model_X:
         print("Image is now [BxCxHxW]: " + str(image.shape))
         print("End: preprocess image")
         print("--------")
-
-        '''
-        Before feeding the data into the model for inference,
-        you might have to preprocess it. This function is where you can do that.
-        '''
+        
         return image
 
     def boundingbox(self, outputs, frame):
