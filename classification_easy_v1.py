@@ -1,4 +1,4 @@
-# python object_detection_v2.py --model person-detection-retail-0013 --video Manufacturing.mp4
+# python3 object_detection_v2.py --model person-detection-retail-0013
 
 import numpy as np
 import time
@@ -38,9 +38,9 @@ class Inference:
     # Loads the model
     def load_model(self):
         # Adds Extension
-        CPU_EXTENSION = "/opt/intel/openvino/deployment_tools/inference_engine/lib/intel64/libcpu_extension_sse4.so"
+        #CPU_EXTENSION = "/opt/intel/openvino/deployment_tools/inference_engine/lib/intel64/libcpu_extension_sse4.so"
         self.core = IECore()
-        self.core.add_extension(CPU_EXTENSION, self.device)
+        #self.core.add_extension(CPU_EXTENSION, self.device)
         # Load the network into an executable network
         self.exec_network = self.core.load_network(network=self.model, device_name=self.device, num_requests=1)
         print("Model is loaded")
@@ -109,9 +109,9 @@ class Inference:
 
 def build_argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', required=True)
+    parser.add_argument('--model')
     parser.add_argument('--device', default='CPU')
-    parser.add_argument('--video', default=None)
+    parser.add_argument('--video')
     parser.add_argument('--queue_param', default=None)
     parser.add_argument('--output_path', default='results/')
     parser.add_argument('--max_people', default=2)
@@ -152,8 +152,7 @@ def main():
     print("fps: " + str(fps))
 
     # Define output video
-    out_video = cv2.VideoWriter(os.path.join(output_path, 'output_video3.mp4'), cv2.VideoWriter_fourcc(*'avc1'), fps,
-                                (initial_w, initial_h), True)
+    out_video = cv2.VideoWriter(os.path.join(output_path, 'C:/Users/erwin.entrich/OneDrive - Entrich Technologies/Projekte/ET/Github/DC-Box/stepbystep/demos/output_video3.mp4'), cv2.VideoWriter_fourcc(*'avc1'), fps, (initial_w, initial_h), True)
     # We have just one request number is 0
     request_id = 0
 
