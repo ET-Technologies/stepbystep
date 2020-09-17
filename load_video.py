@@ -9,6 +9,7 @@ import cv2
 import os
 
 video = 'demos\demo.mp4'
+video = 'demos\image.jpg'
 
 
 def example_videocapture():
@@ -27,7 +28,6 @@ def example_videocapture():
         cv2.waitKey(1)
     cap.release()
     cv2.destroyAllWindows()
-
 
 
 def example_videostream():
