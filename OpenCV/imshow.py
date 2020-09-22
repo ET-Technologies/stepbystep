@@ -1,5 +1,5 @@
 import cv2
-from cv2 import waitkey
+#from cv2 import waitkey
 path = '/home/thomas/Github/stepbystep/cropped_image.png'
 test = cv2.imread(path)
 window = 'image'
