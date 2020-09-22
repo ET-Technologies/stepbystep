@@ -1,11 +1,20 @@
+'''
 # Udacity Workspace
 # source /opt/intel/openvino/bin/setupvars.sh
 # Model Downloader python3 downloader.py --name face-detection-retail-0004 --precisions FP32 -o /home/workspace
 # python3 face_detection.py --model models/face-detection-retail-0004 --video demo.mp4
 
+Linux
+source /opt/intel/openvino/bin/setupvars.sh
+
+python3 ./Openvino/face_detection_easy_v1.py \
+--model models/fp16/face-detection-adas-0001 \
+--video demos/demo.mp4
+
 # Raspberry
 # source /opt/intel/openvino/bin/setupvars.sh
 #python3 face_detection_easy_v1.py --model models/face-detection-adas-0001 --video demos/demo.mp4 --device MYRIAD
+'''
 
 import numpy as np
 import time
@@ -21,13 +30,14 @@ class Model_X:
     '''
     Class for the Face Detection Model.
     '''
-    def __init__(self, model_name, threshold, device='CPU', extensions=None):
+    def __init__(self, model_name, threshold, device, extensions, version):
 
         self.model_weights = model_name + '.bin'
         self.model_structure = model_name + '.xml'
         self.device = device
         self.extensions = extensions
         self.threshold = threshold
+        self.version = version
         print("--------")
         print("model_weights: " + str(self.model_weights))
         print("model_structure: " + str(self.model_structure))
@@ -64,10 +74,10 @@ class Model_X:
         self.core = IECore()
 
         # Add extension
-        CPU_EXTENSION = "/opt/intel/openvino/deployment_tools/inference_engine/lib/intel64/libcpu_extension_sse4.so"
-        if "CPU" in device:
-            log.info("Add extension: ({})".format(str(CPU_EXTENSION)))
-            self.core.add_extension(CPU_EXTENSION, device)
+        #CPU_EXTENSION = "/opt/intel/openvino/deployment_tools/inference_engine/lib/intel64/libcpu_extension_sse4.so"
+        #if "CPU" in self.device and self.version == 2019
+        #    log.info("Add extension: ({})".format(str(CPU_EXTENSION)))
+        #    self.core.add_extension(CPU_EXTENSION, device)
         
         self.exec_network = self.core.load_network(network=self.model, device_name=self.device, num_requests=1)
         print("Exec_network is loaded as:" + str(self.exec_network))
@@ -104,6 +114,8 @@ class Model_X:
         processed_image = self.boundingbox(outputs, frame)
         print("End predictions")
         print("--------")
+        cv2.imshow("Test", processed_image)
+
         return processed_image
 
     def check_model(self):
@@ -145,12 +157,14 @@ class Model_X:
                 self.ymin = int(obj[4])
                 self.xmax = int(obj[5])
                 self.ymax = int(obj[6])
+                
 
         print("End: boundingbox")
         print("--------")
         frame_cropped = frame.copy()
         #frame_cropped = frame_cropped[self.ymin:(self.ymax + 1), self.xmin:(self.xmax + 1)]
         cv2.imwrite("cropped image.png", frame_cropped)
+        cv2.imshow("Test", frame_cropped)
         self.preprocess_output(frame)
 
         #frame = self.cropimage(frame)
@@ -186,6 +200,7 @@ def build_argparser():
     parser.add_argument('--video', default=None)
     parser.add_argument('--output_path', default='/results')
     parser.add_argument('--threshold', default=0.60)
+    parser.add_argument('--version', default=2020)
 
     return parser
 
@@ -198,10 +213,11 @@ def main():
     video = args.video
     output_path = args.output_path
     threshold = args.threshold
+    version = args.version
 
 
     # Load class Model_X
-    inference = Model_X(model_name, threshold, device, extension)
+    inference = Model_X(model_name, threshold, device, extension, version)
     print("Load class Model_X = OK")
     print("--------")
 
