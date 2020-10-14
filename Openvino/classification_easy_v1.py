@@ -1,4 +1,5 @@
 # python3 object_detection_v2.py --model models\fp16\person-detection-retail-0013.bin
+# python3 classification_easy_v1.py --model models/openvino_er_v1.bin
 
 import numpy as np
 import time
@@ -109,7 +110,7 @@ class Inference:
 
 def build_argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', default= 'models\fp16\person-detection-retail-0013.bin')
+    parser.add_argument('--model', default= 'models/openvino_er_v1.bin')
     parser.add_argument('--device', default='CPU')
     parser.add_argument('--video')
     parser.add_argument('--queue_param', default=None)
